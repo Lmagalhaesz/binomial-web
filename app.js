@@ -3,23 +3,24 @@ import {
   distribuicao, resumo, validar,
 } from './binomial.js';
 
+// atalho para pegar elemento pelo id
 const $ = (id) => document.getElementById(id);
 const form = $('form');
 const erroEl = $('erro');
 const saida = $('saida');
 
-/** Máximo de barras/linhas renderizadas — acima disso mostra uma janela central. */
+// quantidade maxima de barras/linhas mostradas na tela
 const LIMITE_VISUAL = 80;
 
-/** Notação científica quando o número é pequeno demais para 6 casas decimais. */
+// formata o numero; se for muito pequeno usa notacao cientifica
 function fmt(v, casas = 6) {
-  if (!Number.isFinite(v)) return '—';
+  if (!Number.isFinite(v)) return '-';
   if (v !== 0 && Math.abs(v) < 1e-6) return v.toExponential(4);
   return v.toFixed(casas);
 }
 
 function fmtInt(v) {
-  if (!Number.isFinite(v)) return '—';
+  if (!Number.isFinite(v)) return '-';
   return Math.abs(v) > 1e15 ? v.toExponential(4) : v.toLocaleString('pt-BR');
 }
 
@@ -37,7 +38,7 @@ function calcular() {
   const x = Number.parseFloat($('x').value);
 
   if ([n, p, x].some((v) => Number.isNaN(v))) {
-    return mostrarErro('Preencha n, p e x com números válidos.');
+    return mostrarErro('Preencha n, p e x com numeros validos.');
   }
   const problema = validar(n, p, x);
   if (problema) return mostrarErro(problema);
@@ -50,40 +51,40 @@ function calcular() {
   const pAcum = probabilidadeAcumulada(n, p, x);
   const c = combinacoes(n, x);
 
-  // --- cartões ---
+  // mostra os dois resultados principais
   $('expr-ind').textContent = `P(X = ${x})`;
   $('val-ind').textContent = fmt(pInd);
   $('pct-ind').textContent = pct(pInd);
 
-  $('expr-acum').textContent = `P(X ≤ ${x})`;
+  $('expr-acum').textContent = `P(X <= ${x})`;
   $('val-acum').textContent = fmt(pAcum);
   $('pct-acum').textContent = pct(pAcum);
 
-  // --- passos ---
+  // monta a resolucao passo a passo
   const passos = [
-    ['Dados', `n = ${n}   p = ${p}   q = 1 − p = ${fmt(q)}   x = ${x}`],
-    ['Combinações', `C(${n},${x}) = ${n}! / (${x}! · ${n - x}!) = ${fmtInt(c)}`],
-    ['Substituição', `P(${x}) = ${fmtInt(c)} · ${p}^${x} · ${fmt(q)}^${n - x}`],
-    ['Individual — P(X = x)', `P(X = ${x}) = ${fmt(pInd, 8)}  =  ${pct(pInd)}`],
-    ['Acumulada — P(X ≤ x)', `P(X ≤ ${x}) = ${somatorioTexto(n, p, x)} = ${fmt(pAcum, 8)}  =  ${pct(pAcum)}`],
+    ['Dados', `n = ${n}   p = ${p}   q = 1 - p = ${fmt(q)}   x = ${x}`],
+    ['Combinacoes', `C(${n},${x}) = ${n}! / (${x}! * ${n - x}!) = ${fmtInt(c)}`],
+    ['Substituicao', `P(${x}) = ${fmtInt(c)} * ${p}^${x} * ${fmt(q)}^${n - x}`],
+    ['Individual - P(X = x)', `P(X = ${x}) = ${fmt(pInd, 8)}  =  ${pct(pInd)}`],
+    ['Acumulada - P(X <= x)', `P(X <= ${x}) = ${somatorioTexto(n, p, x)} = ${fmt(pAcum, 8)}  =  ${pct(pAcum)}`],
   ];
   $('passos').innerHTML = passos
     .map(([rot, txt]) => `<p class="rotulo">${rot}</p><p>${escapar(txt)}</p>`)
     .join('');
 
-  // --- medidas ---
+  // outros resultados
   const { media, variancia, desvio } = resumo(n, p);
   const medidas = [
     ['P(X &lt; x)', fmt(pAcum - pInd)],
     ['P(X &gt; x)', fmt(Math.max(0, 1 - pAcum))],
-    ['P(X ≥ x)', fmt(Math.min(1, 1 - pAcum + pInd))],
-    ['Média  μ = n·p', fmt(media, 4)],
-    ['Variância  σ² = n·p·q', fmt(variancia, 4)],
-    ['Desvio padrão  σ', fmt(desvio, 4)],
+    ['P(X &gt;= x)', fmt(Math.min(1, 1 - pAcum + pInd))],
+    ['Media (n*p)', fmt(media, 4)],
+    ['Variancia (n*p*q)', fmt(variancia, 4)],
+    ['Desvio padrao', fmt(desvio, 4)],
   ];
   $('medidas').innerHTML = medidas.map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`).join('');
 
-  // --- gráfico + tabela ---
+  // grafico e tabela
   const dist = distribuicao(n, p);
   const { inicio, fim } = janela(n, x, dist);
 
@@ -109,20 +110,20 @@ function calcular() {
   $('tbody').innerHTML = linhas.join('');
 
   const recorte = (inicio > 0 || fim < n)
-    ? `Exibindo x de ${inicio} a ${fim} (n = ${n}). Fora dessa faixa as probabilidades são desprezíveis.`
+    ? `Exibindo x de ${inicio} a ${fim} (n = ${n}). Fora dessa faixa os valores sao praticamente zero.`
     : '';
   $('nota-grafico').textContent = recorte;
   $('nota-tabela').textContent = recorte;
 }
 
-/** Texto do somatório da acumulada, resumido quando há muitos termos. */
+// monta o texto da soma P(0) + P(1) + ... + P(x)
 function somatorioTexto(n, p, x) {
   if (x === 0) return 'P(0)';
   if (x <= 5) return Array.from({ length: x + 1 }, (_, i) => `P(${i})`).join(' + ');
-  return `P(0) + P(1) + … + P(${x})`;
+  return `P(0) + P(1) + ... + P(${x})`;
 }
 
-/** Faixa de x renderizada: tudo, ou uma janela centrada onde há massa de probabilidade. */
+// quando n eh grande, escolhe a faixa de x que vai aparecer no grafico e na tabela
 function janela(n, x, dist) {
   if (n + 1 <= LIMITE_VISUAL) return { inicio: 0, fim: n };
   const meio = Math.round((n * dist.reduce((a, v, i) => a + v * i, 0)) / Math.max(n, 1) || 0);
@@ -131,7 +132,7 @@ function janela(n, x, dist) {
   let inicio = Math.max(0, centro - metade);
   let fim = Math.min(n, inicio + LIMITE_VISUAL - 1);
   inicio = Math.max(0, fim - LIMITE_VISUAL + 1);
-  // garante que o x pedido apareça
+  // garante que o x digitado apareca
   if (x < inicio) { inicio = Math.max(0, x - 2); fim = Math.min(n, inicio + LIMITE_VISUAL - 1); }
   if (x > fim) { fim = Math.min(n, x + 2); inicio = Math.max(0, fim - LIMITE_VISUAL + 1); }
   return { inicio, fim };
@@ -148,5 +149,5 @@ $('exemplo').addEventListener('click', () => {
   calcular();
 });
 
-// primeiro cálculo ao abrir a página
+// calcula ja ao abrir a pagina
 calcular();
